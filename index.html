@@ -71,10 +71,11 @@
        */
       function showImages(fileList) {
         for (const file of fileList) {
-          file.type = 'image/png';
           const div = document.createElement('div');
           const img = document.createElement('img');
-          // img.setAttribute('draggable', 'false');
+          img.onerror = function () {
+            div.remove();
+          };
           img.src = URL.createObjectURL(file);
           div.append(img);
           elMain.append(div);
