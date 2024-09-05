@@ -21,7 +21,6 @@ if (input) {
 }
 
 function showImage(file: File) {
-  console.log(file);
   const div = document.createElement('div');
   const img = document.createElement('img');
   img.onerror = function () {
