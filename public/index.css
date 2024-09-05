@@ -1,0 +1,34 @@
+html,
+body {
+  height: 100vh;
+  line-height: 0;
+  margin: 0;
+}
+body > .entry-point {
+  display: contents;
+}
+body > .entry-point > * {
+  line-height: 1;
+}
+div {
+  box-sizing: border-box;
+}
+
+main {
+  display: flex;
+  flex-flow: column nowrap;
+  gap: 0.125em;
+}
+main > div {
+  background-color: black;
+  padding-block: 0.0625em;
+}
+main > div > img {
+  display: block;
+  margin-inline: auto;
+  max-inline-size: 100%;
+}
+
+.hidden {
+  display: none;
+}
