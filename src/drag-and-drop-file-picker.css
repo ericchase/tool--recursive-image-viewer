@@ -34,10 +34,3 @@
   transition: all 0.2s ease;
   width: auto;
 }
-/* .drag-and-drop-file-picker:hover > span {
-  background-color: lightgray;
-  padding: 0.25em;
-  padding-bottom: 0.5em;
-  transform: scale(1.14);
-  transition: all 0.2s ease;
-} */
