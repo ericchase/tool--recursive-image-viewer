@@ -4,9 +4,10 @@
   display: flex;
   flex-flow: column nowrap;
   height: 100%;
-  width: 100%;
-  position: fixed;
+  justify-content: center;
+  position: relative;
   text-align: center;
+  width: 100%;
 }
 .drag-and-drop-file-picker > input {
   background: transparent;
@@ -22,15 +23,4 @@
   outline: none;
   position: absolute;
   top: 0;
-}
-.drag-and-drop-file-picker > span {
-  background-color: transparent;
-  border-radius: 0.5em;
-  height: auto;
-  margin-top: 25vh;
-  padding: 0;
-  pointer-events: none;
-  transform: scale(1);
-  transition: all 0.2s ease;
-  width: auto;
 }
