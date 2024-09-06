@@ -62,7 +62,6 @@ export function setupDragAndDropFilePicker(
   const fSEntryIterator = new RecursiveIterator<FileSystemEntry, FileSystemFileEntry>(async function* (fSEntryIterator, push) {
     for await (const fSEntry of fSEntryIterator) {
       const path = fSEntry.fullPath.slice(1);
-      console.log({ path });
       if (!fSEntrySet.has(path)) {
         fSEntrySet.add(path);
         const fsEntries = new FileSystemEntryIterator(fSEntry);
@@ -105,7 +104,6 @@ export function setupDragAndDropFilePicker(
     }
     for (const file of files) {
       const path = GetWebkitRelativePath(file) + file.name;
-      console.log({ path });
       if (!fSEntrySet.has(path)) {
         fSEntrySet.add(path);
         await fn.onUploadNextFile(file, () => (done = true));
