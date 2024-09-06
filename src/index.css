@@ -1,19 +1,18 @@
-* {
+:where(*) {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html,
-body {
+:where(html, body) {
   height: 100vh;
   line-height: 0;
   position: relative;
 }
-body > .entry-point {
+:where(body > .entry-point) {
   display: contents;
 }
-body > .entry-point > * {
+:where(body > .entry-point > *:not(img)) {
   line-height: 1;
 }
 
@@ -36,7 +35,7 @@ main > div > img {
   display: none;
 }
 
-.drag-and-drop-file-picker > span {
+.drag-and-drop-file-picker & > span {
   position: absolute;
   top: 25%;
   left: 50%;

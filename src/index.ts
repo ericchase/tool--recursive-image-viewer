@@ -44,10 +44,10 @@ if (file_picker) {
 }
 
 function showImage(file: File) {
-  try {
-    imageLoadQueue.add(
-      () =>
-        new Promise<void>((resolve, reject) => {
+  imageLoadQueue.add(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        try {
           const img = document.createElement('img');
           const div = document.createElement('div');
           main?.append(div);
@@ -61,7 +61,9 @@ function showImage(file: File) {
             div.remove();
             reject();
           });
-        }),
-    );
-  } catch (_) {}
+        } catch (_) {
+          reject();
+        }
+      }),
+  );
 }
