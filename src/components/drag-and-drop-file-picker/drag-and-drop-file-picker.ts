@@ -3,8 +3,7 @@ import { RecursiveIterator } from '../../lib/ericchase/Utility/RecursiveAsyncIte
 import type { SyncAsyncIterable } from '../../lib/ericchase/Utility/Type.js';
 import { DataTransferItemIterator } from '../../lib/ericchase/Web API/DataTransfer.js';
 import { FileSystemDirectoryEntryIterator, FileSystemEntryIterator } from '../../lib/ericchase/Web API/FileSystem.js';
-
-const webkitdirectory_support = /android|iphone|mobile/i.test(window.navigator.userAgent) === true ? false : true;
+import { GetWebkitEntries, GetWebkitRelativePath, SupportsWebkitDirectory } from '../../lib/ericchase/Web API/HTMLInputElement.js';
 
 export function setupDragAndDropFilePicker(
   container: Element,
@@ -26,7 +25,7 @@ export function setupDragAndDropFilePicker(
   if (!element) {
     throw 'drag-and-drop-file-picker input element missing';
   }
-  if (options?.directory === true && webkitdirectory_support) {
+  if (options?.directory === true && SupportsWebkitDirectory()) {
     element.toggleAttribute('webkitdirectory', true);
   }
   if (options?.multiple === true) {
@@ -63,6 +62,7 @@ export function setupDragAndDropFilePicker(
   const fSEntryIterator = new RecursiveIterator<FileSystemEntry, FileSystemFileEntry>(async function* (fSEntryIterator, push) {
     for await (const fSEntry of fSEntryIterator) {
       const path = fSEntry.fullPath.slice(1);
+      console.log({ path });
       if (!fSEntrySet.has(path)) {
         fSEntrySet.add(path);
         const fsEntries = new FileSystemEntryIterator(fSEntry);
@@ -104,7 +104,8 @@ export function setupDragAndDropFilePicker(
       if (done === true) return uploadEnd();
     }
     for (const file of files) {
-      const path = file.webkitRelativePath + file.name;
+      const path = GetWebkitRelativePath(file) + file.name;
+      console.log({ path });
       if (!fSEntrySet.has(path)) {
         fSEntrySet.add(path);
         await fn.onUploadNextFile(file, () => (done = true));
@@ -116,7 +117,7 @@ export function setupDragAndDropFilePicker(
     jobQueue.add(async () => {
       uploadStart();
       if (element instanceof HTMLInputElement && element.files) {
-        await iterateFSEntries(element.webkitEntries, element.files);
+        await iterateFSEntries(GetWebkitEntries(element) ?? [], element.files);
       }
       uploadEnd();
     }, 'changeHandler');
