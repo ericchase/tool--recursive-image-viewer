@@ -17,21 +17,19 @@ if (file_picker) {
         file_picker.classList.add('hidden');
         main?.replaceChildren();
       },
-      onUploadNextFile: showImage,
+      onUploadNextFile: addImage,
       onUploadEnd() {
-        imageLoadQueue.subscribe(() => {
-          if (imageLoadQueue.done) {
-            if (imageLoadCount === 0) {
-              file_picker.classList.remove('hidden');
-              const div = document.createElement('div');
-              div.style.color = 'red';
-              div.textContent = 'No Images Found! Try another folder.';
-              file_picker.querySelector('span')?.append(
-                document.createElement('br'), //
-                document.createElement('br'),
-                div,
-              );
-            }
+        imageLoadQueue.done.then(() => {
+          if (imageLoadCount === 0) {
+            file_picker.classList.remove('hidden');
+            const div = document.createElement('div');
+            div.style.color = 'red';
+            div.textContent = 'No Images Found! Try another folder.';
+            file_picker.querySelector('span')?.append(
+              document.createElement('br'), //
+              document.createElement('br'),
+              div,
+            );
           }
         });
       },
@@ -43,7 +41,7 @@ if (file_picker) {
   );
 }
 
-function showImage(file: File) {
+function addImage(file: File) {
   imageLoadQueue.add(
     () =>
       new Promise<void>((resolve, reject) => {

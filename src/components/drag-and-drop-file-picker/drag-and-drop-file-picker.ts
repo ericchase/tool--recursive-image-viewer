@@ -1,3 +1,4 @@
+import { Sleep } from '../../lib/ericchase/Algorithm/Sleep.js';
 import { JobQueue } from '../../lib/ericchase/Utility/JobQueue.js';
 import { RecursiveIterator } from '../../lib/ericchase/Utility/RecursiveAsyncIterator.js';
 import type { SyncAsyncIterable } from '../../lib/ericchase/Utility/Type.js';
@@ -12,18 +13,23 @@ export function setupDragAndDropFilePicker(
     onDragEnter?: () => void;
     onDragLeave?: () => void;
     onDrop?: () => void;
-    onUploadEnd?: () => void;
+    onUploadEnd?: () => void | Promise<void>;
+    onUploadError?: (error: any) => void | Promise<void>;
     onUploadNextFile: (file: File, done: () => void) => Promise<void> | void;
-    onUploadStart?: () => void;
+    onUploadStart?: () => void | Promise<void>;
   },
   options?: {
-    directory: boolean;
-    multiple: boolean;
+    accept?: string;
+    directory?: boolean;
+    multiple?: boolean;
   },
 ) {
   const element = container.querySelector('input');
   if (!element) {
     throw 'drag-and-drop-file-picker input element missing';
+  }
+  if (options?.accept) {
+    element.setAttribute('accept', options.accept);
   }
   if (options?.directory === true && SupportsWebkitDirectory()) {
     element.toggleAttribute('webkitdirectory', true);
@@ -76,58 +82,67 @@ export function setupDragAndDropFilePicker(
   });
 
   const jobQueue = new JobQueue<void, string>(-1);
-  let started = false;
-  let ended = true;
+  jobQueue.subscribe((_, error) => {
+    if (error) {
+      fn?.onUploadError?.(error);
+    }
+  });
+
   let done = true;
-  const uploadStart = () => {
-    if (started === false) {
-      started = true;
-      ended = false;
+  let running = false;
+  const uploadStart = async () => {
+    if (running === false) {
       done = false;
-      fn.onUploadStart?.();
+      running = true;
+      await fn.onUploadStart?.();
+      // give browser some time to queue both events
+      Sleep(500).then(async () => {
+        await jobQueue.done;
+        uploadEnd();
+      });
     }
   };
-  const uploadEnd = () => {
-    if (ended === false) {
-      started = false;
-      ended = true;
-      jobQueue.abort();
-      jobQueue.reset();
-      fSEntrySet.clear();
-      fn.onUploadEnd?.();
-    }
+  const uploadEnd = async () => {
+    done = true;
+    running = false;
+    await fn.onUploadEnd?.();
+    jobQueue.reset();
+    fSEntrySet.clear();
   };
-  const iterateFSEntries = async (initEntries: SyncAsyncIterable<FileSystemEntry>, files: FileList) => {
-    for await (const fSFileEntry of fSEntryIterator.iterate(initEntries)) {
-      await fn.onUploadNextFile(await new Promise<File>((resolve, reject) => fSFileEntry.file(resolve, reject)), () => (done = true));
-      if (done === true) return uploadEnd();
-    }
-    for (const file of files) {
-      const path = GetWebkitRelativePath(file) + file.name;
-      if (!fSEntrySet.has(path)) {
-        fSEntrySet.add(path);
+  const iterateFSEntries = async (entries: SyncAsyncIterable<FileSystemEntry>, files: FileList) => {
+    if (done === false) {
+      for await (const fSFileEntry of fSEntryIterator.iterate(entries)) {
+        const file = await new Promise<File>((resolve, reject) => fSFileEntry.file(resolve, reject));
         await fn.onUploadNextFile(file, () => (done = true));
-        if (done === true) return uploadEnd();
+        // @ts-ignore
+        if (done === true) return;
+      }
+      for (const file of files) {
+        const path = GetWebkitRelativePath(file) + file.name;
+        if (!fSEntrySet.has(path)) {
+          fSEntrySet.add(path);
+          await fn.onUploadNextFile(file, () => (done = true));
+          // @ts-ignore
+          if (done === true) return;
+        }
       }
     }
   };
   const changeHandler = () => {
     jobQueue.add(async () => {
-      uploadStart();
-      if (element instanceof HTMLInputElement && element.files) {
+      await uploadStart();
+      if (done === false && element instanceof HTMLInputElement && element.files) {
         await iterateFSEntries(GetWebkitEntries(element) ?? [], element.files);
       }
-      uploadEnd();
     }, 'changeHandler');
   };
   const dropHandler = (event: DragEvent) => {
     jobQueue.add(async () => {
-      uploadStart();
-      if (event.dataTransfer) {
+      await uploadStart();
+      if (done === false && event.dataTransfer) {
         const dataTransferItems = new DataTransferItemIterator(event.dataTransfer.items);
         await iterateFSEntries(dataTransferItems.getAsEntry(), event.dataTransfer.files);
       }
-      uploadEnd();
     }, 'dropHandler');
   };
   element.addEventListener('change', changeHandler);
