@@ -37,7 +37,7 @@ main > div > img {
   display: none;
 }
 
-.drag-and-drop-file-picker & > span {
+.drag-and-drop-file-picker > span {
   position: absolute;
   top: 25%;
   left: 50%;
