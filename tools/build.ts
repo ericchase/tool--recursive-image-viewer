@@ -15,10 +15,10 @@ await CleanDirectory(buildDir);
 await CleanDirectory(tempDir);
 
 const toCopy = new GlobManager() //
-  .scan(sourceDir, '*.css');
+  .scan(sourceDir, '**/*.css');
 
 const toExclude = new GlobManager() //
-  .scan(sourceDir, '{@types,cli,lib}/**', 'components/**');
+  .scan(sourceDir, '{@types,cli,lib}/**', 'components/**/*.html');
 
 // Process HTML
 const htmlList = ['**/*.html'];

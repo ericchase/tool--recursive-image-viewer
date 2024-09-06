@@ -1,4 +1,4 @@
-.drag-and-drop-file-picker {
+:where(.drag-and-drop-file-picker) {
   align-items: center;
   cursor: pointer;
   display: flex;
@@ -9,7 +9,7 @@
   text-align: center;
   width: 100%;
 }
-.drag-and-drop-file-picker > input {
+:where(.drag-and-drop-file-picker > input) {
   background: transparent;
   cursor: inherit;
   display: block;
