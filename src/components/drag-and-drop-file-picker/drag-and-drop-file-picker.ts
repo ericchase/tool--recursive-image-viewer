@@ -1,5 +1,6 @@
 import { JobQueue } from '../../lib/ericchase/Utility/JobQueue.js';
-import { RecursiveAsyncIterator } from '../../lib/ericchase/Utility/RecursiveAsyncIterator.js';
+import { RecursiveIterator } from '../../lib/ericchase/Utility/RecursiveAsyncIterator.js';
+import type { SyncAsyncIterable } from '../../lib/ericchase/Utility/Type.js';
 import { DataTransferItemIterator } from '../../lib/ericchase/Web API/DataTransfer.js';
 import { FileSystemDirectoryEntryIterator, FileSystemEntryIterator } from '../../lib/ericchase/Web API/FileSystem.js';
 
@@ -11,6 +12,7 @@ export function setupDragAndDropFilePicker(
     onDragEnd?: () => void;
     onDragEnter?: () => void;
     onDragLeave?: () => void;
+    onDrop?: () => void;
     onUploadEnd?: () => void;
     onUploadNextFile: (file: File, done: () => void) => Promise<void> | void;
     onUploadStart?: () => void;
@@ -32,28 +34,37 @@ export function setupDragAndDropFilePicker(
   }
 
   if (fn.onDragEnd || fn.onDragEnter || fn.onDragLeave) {
+    const removeListeners = () => {
+      element.addEventListener('dragleave', dragleaveHandler);
+      element.addEventListener('dragend', dragendHandler);
+      element.addEventListener('drop', dropHandler);
+    };
     const dragendHandler = () => {
-      element.removeEventListener('dragleave', dragendHandler);
-      element.removeEventListener('dragend', dragendHandler);
+      removeListeners();
       fn.onDragEnd?.();
     };
     const dragleaveHandler = () => {
-      element.removeEventListener('dragleave', dragendHandler);
-      element.removeEventListener('dragend', dragendHandler);
+      removeListeners();
       fn.onDragLeave?.();
+    };
+    const dropHandler = () => {
+      removeListeners();
+      fn.onDrop?.();
     };
     element.addEventListener('dragenter', () => {
       element.addEventListener('dragleave', dragleaveHandler);
       element.addEventListener('dragend', dragendHandler);
+      element.addEventListener('drop', dropHandler);
       fn.onDragEnter?.();
     });
   }
 
   const fSEntrySet = new Set<string>();
-  const fSEntryIterator = new RecursiveAsyncIterator<FileSystemEntry, FileSystemFileEntry>(async function* (fSEntryIterator, push) {
+  const fSEntryIterator = new RecursiveIterator<FileSystemEntry, FileSystemFileEntry>(async function* (fSEntryIterator, push) {
     for await (const fSEntry of fSEntryIterator) {
-      if (!fSEntrySet.has(fSEntry.fullPath.slice(1))) {
-        fSEntrySet.add(fSEntry.fullPath.slice(1));
+      const path = fSEntry.fullPath.slice(1);
+      if (!fSEntrySet.has(path)) {
+        fSEntrySet.add(path);
         const fsEntries = new FileSystemEntryIterator(fSEntry);
         for (const fSFileEntry of fsEntries.getFileEntry()) {
           yield fSFileEntry;
@@ -87,21 +98,25 @@ export function setupDragAndDropFilePicker(
       fn.onUploadEnd?.();
     }
   };
+  const iterateFSEntries = async (initEntries: SyncAsyncIterable<FileSystemEntry>, files: FileList) => {
+    for await (const fSFileEntry of fSEntryIterator.iterate(initEntries)) {
+      await fn.onUploadNextFile(await new Promise<File>((resolve, reject) => fSFileEntry.file(resolve, reject)), () => (done = true));
+      if (done === true) return uploadEnd();
+    }
+    for (const file of files) {
+      const path = file.webkitRelativePath + file.name;
+      if (!fSEntrySet.has(path)) {
+        fSEntrySet.add(path);
+        await fn.onUploadNextFile(file, () => (done = true));
+        if (done === true) return uploadEnd();
+      }
+    }
+  };
   const changeHandler = () => {
     jobQueue.add(async () => {
       uploadStart();
       if (element instanceof HTMLInputElement && element.files) {
-        for await (const fSFileEntry of fSEntryIterator.iterate(element.webkitEntries)) {
-          await fn.onUploadNextFile(await new Promise<File>((resolve, reject) => fSFileEntry.file(resolve, reject)), () => (done = true));
-          if (done === true) return uploadEnd();
-        }
-        for (const file of element.files) {
-          if (!fSEntrySet.has(file.webkitRelativePath)) {
-            fSEntrySet.add(file.webkitRelativePath);
-            await fn.onUploadNextFile(file, () => (done = true));
-            if (done === true) return uploadEnd();
-          }
-        }
+        await iterateFSEntries(element.webkitEntries, element.files);
       }
       uploadEnd();
     }, 'changeHandler');
@@ -111,17 +126,7 @@ export function setupDragAndDropFilePicker(
       uploadStart();
       if (event.dataTransfer) {
         const dataTransferItems = new DataTransferItemIterator(event.dataTransfer.items);
-        for await (const fSFileEntry of fSEntryIterator.iterate(dataTransferItems.getAsEntry())) {
-          await fn.onUploadNextFile(await new Promise<File>((resolve, reject) => fSFileEntry.file(resolve, reject)), () => (done = true));
-          if (done === true) return uploadEnd();
-        }
-        for (const file of event.dataTransfer.files) {
-          if (!fSEntrySet.has(file.webkitRelativePath)) {
-            fSEntrySet.add(file.webkitRelativePath);
-            await fn.onUploadNextFile(file, () => (done = true));
-            if (done === true) return uploadEnd();
-          }
-        }
+        await iterateFSEntries(dataTransferItems.getAsEntry(), event.dataTransfer.files);
       }
       uploadEnd();
     }, 'dropHandler');
